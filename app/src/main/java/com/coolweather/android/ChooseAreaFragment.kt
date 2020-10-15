@@ -15,6 +15,7 @@ import com.coolweather.android.db.County
 import com.coolweather.android.db.Province
 import com.coolweather.android.util.HttpUtil
 import com.coolweather.android.util.Utility
+import kotlinx.android.synthetic.main.activity_weather.*
 import kotlinx.android.synthetic.main.choose_area.*
 import kotlinx.android.synthetic.main.choose_area.view.*
 import okhttp3.Call
@@ -63,10 +64,19 @@ class ChooseAreaFragment : Fragment() {
                 }
                 LEVEL_COUNTY -> {
                     val weatherId = countyList[position].weatherId
-                    val intent = Intent(activity, WeatherActivity::class.java)
-                    intent.putExtra("weather_id", weatherId)
-                    startActivity(intent)
-                    activity?.finish()
+                    if (activity is MainActivity) {
+                        val intent = Intent(activity, WeatherActivity::class.java)
+                        intent.putExtra("weather_id", weatherId)
+                        startActivity(intent)
+                        activity?.finish()
+                    } else if (activity is WeatherActivity) {
+                        val temp = activity as WeatherActivity
+                        temp.drawerLayout.closeDrawers()
+                        temp.swipeRefresh.isRefreshing = true
+                        if (weatherId != null) {
+                            temp.requestWeather(weatherId)
+                        }
+                    }
                 }
             }
         }

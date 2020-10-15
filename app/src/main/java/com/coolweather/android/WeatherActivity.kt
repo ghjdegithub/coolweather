@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import com.bumptech.glide.Glide
 import com.coolweather.android.gson.Weather
 import com.coolweather.android.util.HttpUtil
@@ -26,6 +27,7 @@ import okhttp3.Response
 import java.io.IOException
 
 class WeatherActivity : AppCompatActivity() {
+    var mWeatherId: String? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 21) {
@@ -35,19 +37,25 @@ class WeatherActivity : AppCompatActivity() {
             window.statusBarColor = Color.TRANSPARENT
         }
         setContentView(R.layout.activity_weather)
+        swipeRefresh.setColorSchemeResources(R.color.colorPrimary)
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val weatherString = prefs.getString("weather", null)
         if (weatherString != null) {
             val weather = Utility.handleWeatherResponse(weatherString)
+            mWeatherId = weather?.basic?.weatherId
             if (weather != null) {
                 showWeatherInfo(weather)
             }
         } else {
-            val weatherId = intent.getStringExtra("weather_id")
+            mWeatherId = intent.getStringExtra("weather_id")
             weatherLayout.visibility = View.INVISIBLE
-            if (weatherId != null) {
-                requestWeather(weatherId)
-            }
+            mWeatherId?.let { requestWeather(it) }
+        }
+        swipeRefresh.setOnRefreshListener {
+            mWeatherId?.let { requestWeather(it) }
+        }
+        navButton.setOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
         }
         val bingPic = prefs.getString("bing_pic", null)
         if (bingPic != null) {
@@ -70,10 +78,12 @@ class WeatherActivity : AppCompatActivity() {
                                 PreferenceManager.getDefaultSharedPreferences(this@WeatherActivity).edit()
                             editor.putString("weather", responseText)
                             editor.apply()
+                            mWeatherId = weather.basic!!.weatherId
                             showWeatherInfo(weather)
                         } else {
                             Toast.makeText(this@WeatherActivity, "获取天气信息失败", Toast.LENGTH_SHORT).show()
                         }
+                        swipeRefresh.isRefreshing = false
                     }
                 }
             }
@@ -82,6 +92,7 @@ class WeatherActivity : AppCompatActivity() {
                 e.printStackTrace()
                 runOnUiThread {
                     Toast.makeText(this@WeatherActivity, "获取天气信息失败", Toast.LENGTH_SHORT).show()
+                    swipeRefresh.isRefreshing = false
                 }
             }
         })

@@ -1,6 +1,7 @@
 package com.coolweather.android
 
 import android.app.ProgressDialog
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +16,7 @@ import com.coolweather.android.db.Province
 import com.coolweather.android.util.HttpUtil
 import com.coolweather.android.util.Utility
 import kotlinx.android.synthetic.main.choose_area.*
+import kotlinx.android.synthetic.main.choose_area.view.*
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
@@ -29,7 +31,6 @@ class ChooseAreaFragment : Fragment() {
     }
 
     var progressDialog: ProgressDialog? = null
-    lateinit var listView: ListView
     lateinit var adapter: ArrayAdapter<String>
     var dataList = arrayListOf<String>()
     lateinit var provinceList: List<Province>
@@ -44,20 +45,29 @@ class ChooseAreaFragment : Fragment() {
         if (context != null) {
             adapter = ArrayAdapter(context!!, android.R.layout.simple_list_item_1, dataList)
         }
-        listView = view.findViewById(R.id.listView)
-        listView.adapter = adapter
+        view.listView.adapter = adapter
         return view
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         listView.setOnItemClickListener { parent, view, position, id ->
-            if (currentLevel == LEVEL_PROVINCE) {
-                selectedProvince = provinceList?.get(position)
-                queryCities()
-            } else if (currentLevel == LEVEL_CITY) {
-                selectedCity = cityList?.get(position)
-                queryCounties()
+            when (currentLevel) {
+                LEVEL_PROVINCE -> {
+                    selectedProvince = provinceList?.get(position)
+                    queryCities()
+                }
+                LEVEL_CITY -> {
+                    selectedCity = cityList?.get(position)
+                    queryCounties()
+                }
+                LEVEL_COUNTY -> {
+                    val weatherId = countyList[position].weatherId
+                    val intent = Intent(activity, WeatherActivity::class.java)
+                    intent.putExtra("weather_id", weatherId)
+                    startActivity(intent)
+                    activity?.finish()
+                }
             }
         }
         backButton.setOnClickListener {
@@ -135,29 +145,33 @@ class ChooseAreaFragment : Fragment() {
         showProgressDialog()
         HttpUtil.sendOkHttpRequest(address, object : Callback {
             override fun onResponse(call: Call, response: Response) {
-                val responseText = response.body().string()
-                val result = when (type) {
-                    "province" -> {
-                        Utility.handleProvinceResponse(responseText)
+                val responseText = response.body?.string()
+                responseText?.let {
+                    val result = when (type) {
+                        "province" -> {
+                            Utility.handleProvinceResponse(responseText)
+                        }
+                        "city" -> {
+                            Utility.handleCityResponse(responseText, selectedProvince.id!!)
+                        }
+                        "county" -> {
+                            Utility.handleCountyResponse(responseText, selectedCity.id!!)
+                        }
+                        else -> false
                     }
-                    "city" -> {
-                        Utility.handleCityResponse(responseText, selectedProvince.id!!)
-                    }
-                    "county" -> {
-                        Utility.handleCountyResponse(responseText, selectedCity.id!!)
-                    }
-                    else -> false
-                }
-                if (result) {
-                    activity?.runOnUiThread {
-                        closeProgressDialog()
-                        when (type) {
-                            "province" -> queryProvinces()
-                            "city" -> queryCities()
-                            "county" -> queryCounties()
+                    if (result) {
+                        activity?.runOnUiThread {
+                            closeProgressDialog()
+                            when (type) {
+                                "province" -> queryProvinces()
+                                "city" -> queryCities()
+                                "county" -> queryCounties()
+                            }
                         }
                     }
                 }
+
+
             }
 
             override fun onFailure(call: Call, e: IOException) {

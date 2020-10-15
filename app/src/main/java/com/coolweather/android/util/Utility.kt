@@ -3,7 +3,10 @@ package com.coolweather.android.util
 import com.coolweather.android.db.City
 import com.coolweather.android.db.County
 import com.coolweather.android.db.Province
+import com.coolweather.android.gson.Weather
+import com.google.gson.Gson
 import org.json.JSONArray
+import org.json.JSONObject
 
 object Utility {
     fun handleProvinceResponse(response: String): Boolean {
@@ -63,5 +66,17 @@ object Utility {
             }
         }
         return false
+    }
+
+    fun handleWeatherResponse(response: String): Weather? {
+        try {
+            val jsonObject = JSONObject(response)
+            val jsonArray = jsonObject.getJSONArray("HeWeather")
+            val weatherContent = jsonArray.getJSONObject(0).toString()
+            return Gson().fromJson(weatherContent, Weather::class.java)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 }

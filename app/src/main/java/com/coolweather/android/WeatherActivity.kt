@@ -4,14 +4,16 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowInsets
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.coolweather.android.gson.Weather
+import com.coolweather.android.service.AutoUpdateService
 import com.coolweather.android.util.HttpUtil
 import com.coolweather.android.util.Utility
 import kotlinx.android.synthetic.main.activity_weather.*
@@ -30,8 +32,11 @@ class WeatherActivity : AppCompatActivity() {
     var mWeatherId: String? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= 21) {
-            val decorView = window.decorView
+        val decorView = window.decorView
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            decorView.windowInsetsController?.hide(WindowInsets.Type.statusBars())
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
             window.statusBarColor = Color.TRANSPARENT
@@ -75,7 +80,7 @@ class WeatherActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (weather != null && "ok" == (weather.status)) {
                             val editor: SharedPreferences.Editor =
-                                PreferenceManager.getDefaultSharedPreferences(this@WeatherActivity).edit()
+                                    PreferenceManager.getDefaultSharedPreferences(this@WeatherActivity).edit()
                             editor.putString("weather", responseText)
                             editor.apply()
                             mWeatherId = weather.basic!!.weatherId
@@ -148,5 +153,7 @@ class WeatherActivity : AppCompatActivity() {
         carWashText.text = carWash
         sportText.text = sport
         weatherLayout.visibility = View.VISIBLE
+        val intent = Intent(this, AutoUpdateService::class.java)
+        startService(intent)
     }
 }
